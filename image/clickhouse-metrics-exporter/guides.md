@@ -395,6 +395,10 @@ multi-stage Dockerfile. These images typically:
 The ClickHouse Metrics Exporter Docker Hardened Image is available as runtime variants only. There are no `dev` variants
 for this image.
 
+FIPS variants include `fips` in the variant name and tag. They come in both runtime and build-time variants. These
+variants use cryptographic modules that have been validated under FIPS 140, a U.S. government standard for secure
+cryptographic operations. For example, usage of MD5 fails in FIPS variants.
+
 ## Migrate to a Docker Hardened Image
 
 To migrate your application to a Docker Hardened Image, you must update your Dockerfile. At minimum, you must update the

@@ -1,10 +1,5 @@
 [
   {
-    "groupId": "commons-beanutils",
-    "artifactId": "commons-beanutils",
-    "version": "1.11.0"
-  },
-  {
     "groupId": "commons-io",
     "artifactId": "commons-io",
     "version": "2.14.0"
@@ -58,5 +53,15 @@
     "groupId": "org.apache.logging.log4j",
     "artifactId": "log4j-core",
     "version": "2.25.3"
+  },
+  {
+    "groupId": "io.vertx",
+    "artifactId": "vertx-core",
+    "version": "4.5.24"
+  },
+  {
+    "groupId": "com.fasterxml.jackson.core",
+    "artifactId": "jackson-core",
+    "version": "2.18.6"
   }
 ]

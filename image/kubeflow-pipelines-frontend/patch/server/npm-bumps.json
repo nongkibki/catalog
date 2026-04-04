@@ -1,19 +1,11 @@
 [
   {
-    "package": "ajv",
-    "version": "6.12.6"
-  },
-  {
     "package": "body-parser",
-    "version": "2.2.1"
+    "version": "2.2.2"
   },
   {
     "package": "@google-cloud/storage",
     "version": "7.11.3"
-  },
-  {
-    "package": "@kubernetes/client-node",
-    "version": "0.22.3"
   },
   {
     "package": "js-yaml",
@@ -24,12 +16,35 @@
     "version": "3.0.5"
   },
   {
-    "package": "json-schema",
-    "version": "0.4.0",
-    "overridePath": ["jsprim"]
+    "package": "qs",
+    "version": "6.15.0"
   },
   {
-    "package": "jws",
-    "version": "4.0.1"
+    "package": "fast-xml-parser",
+    "version": "5.5.7",
+    "overridePath": [
+      "fast-xml-parser"
+    ],
+    "removeLockfileEntries": [
+      "node_modules/fast-xml-parser"
+    ]
+  },
+  {
+    "package": "axios",
+    "version": "1.13.5"
+  },
+  {
+    "package": "picomatch",
+    "version": "2.3.2"
+  },
+  {
+    "package": "path-to-regexp",
+    "version": "0.1.13",
+    "overridePath": [
+      "path-to-regexp"
+    ],
+    "removeLockfileEntries": [
+      "node_modules/path-to-regexp"
+    ]
   }
 ]

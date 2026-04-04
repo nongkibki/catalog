@@ -1,0 +1,81 @@
+# syntax=dhi.io/build:2-helm3
+
+name: Stakater Reloader Helm chart 2.x
+image: dhi.io/stakater-reloader-chart
+variant: helm
+tags:
+  - 2.2.9
+platforms:
+  - linux/amd64
+vars:
+  CHART_COMMIT_SHA: cf37b446586e0575db984bb974293540d3018c90
+  DHI_NAMESPACE: dhi
+  DHI_PREFIX: ""
+  DHI_REGISTRY: dhi.io
+  DHI_SKIP_CONTEXT_COPY: "true"
+  HELM_REFERENCE: dhi/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+  RELOADER_REFERENCE: dhi/stakater-reloader:1.4.14-debian13@sha256:e6c22e89110208e32817289878a8ff962c6c091ad9bdf972642dd489214ed6bd
+  SEMVER_MAJOR_MINOR_VERSION: "2.2"
+  SEMVER_MAJOR_VERSION: "2"
+  SEMVER_VERSION: 2.2.9
+  VERSION: 2.2.9
+contents:
+  builds:
+    - name: stakater-reloader-chart
+      uses: dhi.io/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+      contents:
+        files:
+          - url: git+https://github.com/stakater/Reloader.git#chart-v2.2.9
+            checksum: cf37b446586e0575db984bb974293540d3018c90
+            path: ${source.dir}/helm-charts
+            uid: 0
+            gid: 0
+      pipeline:
+        - name: prepare chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/deployments/kubernetes/chart/reloader
+          with:
+            chart:
+              appRef: stakater-reloader
+              description: Docker Hardened Images Helm chart for Stakater Reloader
+              images:
+                - name: stakater-reloader
+                  ref: dhi/stakater-reloader:1.4.14-debian13@sha256:e6c22e89110208e32817289878a8ff962c6c091ad9bdf972642dd489214ed6bd
+              name: stakater-reloader-chart
+              notes: ${source.dir}/config/NOTES.txt
+              sourceUrl: https://github.com/stakater/Reloader
+            cmd: prepare
+            registry: dhi.io
+        - name: relocate chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/deployments/kubernetes/chart/reloader
+          with:
+            cmd: patch
+            patches:
+              from: ${source.dir}/config
+            registry: dhi.io
+        - name: update dependencies
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/helm-charts/deployments/kubernetes/chart
+          privileged: true
+          with:
+            chart: reloader
+            cmd: dependency update
+        - name: lint
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/helm-charts/deployments/kubernetes/chart
+          with:
+            chart: reloader
+            cmd: lint .
+        - name: package
+          uses: helm/package@v1
+          work-dir: ${source.dir}/helm-charts/deployments/kubernetes/chart
+          with:
+            chart: reloader
+      paths:
+        - type: directory
+          path: ${source.dir}/config
+          uid: 0
+          gid: 0
+          mode: "0644"
+          source: chart/stakater-reloader/config

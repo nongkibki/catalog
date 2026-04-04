@@ -1,0 +1,99 @@
+# syntax=dhi.io/build:2-helm3
+
+name: Kyverno Policy Reporter Helm chart 3.x
+image: dhi.io/kyverno-policy-reporter-chart
+variant: helm
+tags:
+  - 3.7.3
+platforms:
+  - linux/amd64
+vars:
+  CHART_COMMIT_SHA: 844d8d870b8ab5ced05a44c6d887add4dc57516a
+  DHI_NAMESPACE: dhi
+  DHI_PREFIX: ""
+  DHI_REGISTRY: dhi.io
+  DHI_SKIP_CONTEXT_COPY: "true"
+  HELM_REFERENCE: dhi/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+  POLICY_REPORTER_IMAGE_TAG: 3.7.3
+  POLICY_REPORTER_REFERENCE: dhi/kyverno-policy-reporter:3.7.3-debian13@sha256:047952163e56f50fa2c241c4f2f542608de593f04991d5b1c9109ec5a3761132
+  POLICY_REPORTER_UI_IMAGE_TAG: 2.5.1
+  POLICY_REPORTER_UI_REFERENCE: dhi/kyverno-policy-reporter-ui:2.5.1-debian13@sha256:f317add2a8f3b4bc5e9350c2d2926e33c9deb57d5bd32fe44225cbe49548c269
+  SEMVER_MAJOR_MINOR_VERSION: "3.7"
+  SEMVER_MAJOR_VERSION: "3"
+  SEMVER_VERSION: 3.7.3
+  TRIVY_IMAGE_TAG: 0.69.3
+  TRIVY_REFERENCE: dhi/trivy:0.69.3-debian13@sha256:832245a65f9ac5d6a8a73b17541f699ffc1b006fe420ed30a09710c53a8d3347
+  VERSION: 3.7.3
+contents:
+  builds:
+    - name: kyverno-policy-reporter
+      uses: dhi.io/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+      contents:
+        packages:
+          - bash
+          - build-essential
+          - coreutils
+          - grep
+          - libc-bin
+          - sed
+        files:
+          - url: git+https://github.com/kyverno/policy-reporter.git#policy-reporter-3.7.3
+            checksum: 844d8d870b8ab5ced05a44c6d887add4dc57516a
+            path: ${source.dir}/policy-reporter
+            uid: 0
+            gid: 0
+      pipeline:
+        - name: prepare chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/policy-reporter/charts/policy-reporter
+          with:
+            chart:
+              appRef: kyverno-policy-reporter
+              description: Docker Hardened Images Helm chart for Kyverno Policy Reporter
+              images:
+                - name: kyverno-policy-reporter
+                  ref: dhi/kyverno-policy-reporter:3.7.3-debian13@sha256:047952163e56f50fa2c241c4f2f542608de593f04991d5b1c9109ec5a3761132
+                - name: kyverno-policy-reporter-ui
+                  ref: dhi/kyverno-policy-reporter-ui:2.5.1-debian13@sha256:f317add2a8f3b4bc5e9350c2d2926e33c9deb57d5bd32fe44225cbe49548c269
+                - name: trivy
+                  ref: dhi/trivy:0.69.3-debian13@sha256:832245a65f9ac5d6a8a73b17541f699ffc1b006fe420ed30a09710c53a8d3347
+              name: kyverno-policy-reporter-chart
+              notes: ${source.dir}/config/NOTES.txt
+              sourceUrl: https://github.com/kyverno/policy-reporter
+            cmd: prepare
+            registry: dhi.io
+        - name: relocate chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/policy-reporter/charts/policy-reporter
+          with:
+            cmd: patch
+            patches:
+              from: ${source.dir}/config
+            registry: dhi.io
+        - name: blank 3rd party plugin images
+          work-dir: ${source.dir}/policy-reporter/charts/policy-reporter
+          runs: |
+            set -eux -o pipefail
+
+            # Blank out the 3rd party image for kyverno-plugin by matching the specific values path
+            sed -i 's|^\([[:space:]]*\)image: "{{ .Values.plugin.kyverno.image.registry }}/{{ .Values.plugin.kyverno.image.repository }}:{{ .Values.plugin.kyverno.image.tag }}"|\1image: "" #THIS IMAGE IS NOT IN THE DHI CATALOG YET, PLEASE CONTACT THE DOCKER TEAM IF NEEDED|' ./templates/plugins/kyverno/deployment.yaml
+
+            # Blank out the 3rd party image for trivy-plugin (NOT the trivy CLI which uses plugin.trivy.cli.image)
+            sed -i 's|^\([[:space:]]*\)image: "{{ .Values.plugin.trivy.image.registry }}/{{ .Values.plugin.trivy.image.repository }}:{{ .Values.plugin.trivy.image.tag }}"|\1image: "" #THIS IMAGE IS NOT IN THE DHI CATALOG YET, PLEASE CONTACT THE DOCKER TEAM IF NEEDED|' ./templates/plugins/trivy/deployment.yaml
+        - name: lint
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/policy-reporter/charts
+          with:
+            chart: policy-reporter
+            cmd: lint .
+        - name: package
+          uses: helm/package@v1
+          with:
+            chart: ${source.dir}/policy-reporter/charts/policy-reporter
+      paths:
+        - type: directory
+          path: ${source.dir}/config
+          uid: 0
+          gid: 0
+          mode: "0644"
+          source: chart/kyverno-policy-reporter/config

@@ -144,7 +144,7 @@ Server scrapes and compares content for updates
 
 ### Key differences
 
-| Feature         | Non-hardened Argo CD                | Docker Hardened Argo CD                             |
+| Feature         | Non-hardened Firecrawl MCP          | Docker Hardened Firecrawl MCP                       |
 | --------------- | ----------------------------------- | --------------------------------------------------- |
 | Security        | Standard base with common utilities | Minimal, hardened base with security patches        |
 | Shell access    | Full shell (bash/sh) available      | No shell in runtime variants                        |
@@ -181,8 +181,9 @@ or mount debugging tools with the Image Mount feature:
 
 ```
 docker run --rm -it --pid container:my-firecrawl-mcp \
-  --mount=type=image,source=dhi.io/busybox,destination=/dbg,ro \
-  dhi.io/firecrawl-mcp:<tag> /dbg/bin/sh
+  --mount=type=image,source=dhi.io/busybox:1,destination=/dbg,ro \
+  --entrypoint /dbg/bin/sh \
+  dhi.io/firecrawl-mcp:<tag>
 ```
 
 ## Image variants
@@ -203,31 +204,22 @@ multi-stage Dockerfile. These images typically:
 - Include a shell and package manager
 - Are used to build or compile applications
 
-### FIPS variants
-
-FIPS variants include `fips` in the variant name and tag. They come in both runtime and build-time variants. These
-variants use cryptographic modules that have been validated under FIPS 140, a U.S. government standard for secure
-cryptographic operations.
-
-For example, usage of MD5 fails in FIPS variants. To verify FIPS compliance, check the cryptographic module version in
-use by your Argo CD instance.
-
 ## Migrate to a Docker Hardened Image
 
 To migrate your application to a Docker Hardened Image, you must update your Dockerfile. At minimum, you must update the
 base image in your existing Dockerfile to a Docker Hardened Image. This and a few other common changes are listed in the
 following table of migration notes:
 
-| Item               | Migration note                                                                                                                                                                                                                                                       |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Base image         | Replace your base images in your Dockerfile with a Docker Hardened Image.                                                                                                                                                                                            |
-| Package management | Non-dev images, intended for runtime, don't contain package managers. Use package managers only in images with a dev tag.                                                                                                                                            |
-| Non-root user      | By default, non-dev images, intended for runtime, run as the nonroot user. Ensure that necessary files and directories are accessible to the nonroot user.                                                                                                           |
-| Multi-stage build  | Utilize images with a dev tag for build stages and non-dev images for runtime. For binary executables, use a static image for runtime.                                                                                                                               |
-| TLS certificates   | Docker Hardened Images contain standard TLS certificates by default. There is no need to install TLS certificates.                                                                                                                                                   |
-| Ports              | Non-dev hardened images run as a nonroot user by default. As a result, applications in these images can't bind to privileged ports (below 1024) when running in Kubernetes or in Docker Engine versions older than 20.10. Argo CD default ports work without issues. |
-| Entry point        | Docker Hardened Images may have different entry points than images such as Docker Official Images. Inspect entry points for Docker Hardened Images and update your Dockerfile if necessary.                                                                          |
-| No shell           | By default, non-dev images, intended for runtime, don't contain a shell. Use dev images in build stages to run shell commands and then copy artifacts to the runtime stage.                                                                                          |
+| Item               | Migration note                                                                                                                                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Base image         | Replace your base images in your Dockerfile with a Docker Hardened Image.                                                                                                                                                                                                  |
+| Package management | Non-dev images, intended for runtime, don't contain package managers. Use package managers only in images with a dev tag.                                                                                                                                                  |
+| Non-root user      | By default, non-dev images, intended for runtime, run as the nonroot user. Ensure that necessary files and directories are accessible to the nonroot user.                                                                                                                 |
+| Multi-stage build  | Utilize images with a dev tag for build stages and non-dev images for runtime. For binary executables, use a static image for runtime.                                                                                                                                     |
+| TLS certificates   | Docker Hardened Images contain standard TLS certificates by default. There is no need to install TLS certificates.                                                                                                                                                         |
+| Ports              | Non-dev hardened images run as a nonroot user by default. As a result, applications in these images can't bind to privileged ports (below 1024) when running in Kubernetes or in Docker Engine versions older than 20.10. Firecrawl MCP default ports work without issues. |
+| Entry point        | Docker Hardened Images may have different entry points than images such as Docker Official Images. Inspect entry points for Docker Hardened Images and update your Dockerfile if necessary.                                                                                |
+| No shell           | By default, non-dev images, intended for runtime, don't contain a shell. Use dev images in build stages to run shell commands and then copy artifacts to the runtime stage.                                                                                                |
 
 The following steps outline the general migration process.
 

@@ -58,24 +58,32 @@ $ docker run -p 12345:12345 \
   -server.http.address=0.0.0.0:12345
 ```
 
+**Note**: When using named volumes with the nonroot user, ensure the volume has correct permissions. Docker volumes are
+created with root ownership by default. You can either:
+
+1. Use a bind mount with appropriate host permissions
+1. Initialize the volume with correct ownership using an init container
+1. Use a bind mount to a directory that already exists with correct permissions on the host
+
 ## Common Grafana Agent use cases
 
 ## Non-hardened images vs Docker Hardened Images
 
 ### Key differences
 
-| Feature         | Non-hardened Grafana Agent          | Docker Hardened Grafana Agent                              |
-| --------------- | ----------------------------------- | ---------------------------------------------------------- |
-| Base image      | Alpine or Ubuntu-based              | Debian hardened base                                       |
-| Security        | Standard image with basic utilities | Hardened build with security patches and security metadata |
-| Shell access    | Shell available                     | No shell                                                   |
-| Package manager | `apk` (Alpine) or `apt` (Ubuntu)    | No package manager                                         |
-| User            | Runs as `root` or `nobody`          | Runs as `grafana-agent` user (UID 473)                     |
-| Data directory  | `/var/lib/grafana-agent/data`       | Configurable via `-metrics.wal-directory`                  |
-| Build process   | Pre-compiled binaries               | Built from source with verified commit                     |
-| Attack surface  | 200+ utilities and tools            | Only `grafana-agent` binary and CA certificates            |
-| Debugging       | Shell and standard Unix tools       | Use Docker Debug or image mount for troubleshooting        |
-| SBOM            | Not included                        | Software Bill of Materials included                        |
+| Feature               | Non-hardened Grafana Agent          | Docker Hardened Grafana Agent                              |
+| --------------------- | ----------------------------------- | ---------------------------------------------------------- |
+| Base image            | Alpine or Ubuntu-based              | Debian hardened base                                       |
+| Security              | Standard image with basic utilities | Hardened build with security patches and security metadata |
+| Shell access          | Shell available                     | No shell                                                   |
+| Package manager       | `apk` (Alpine) or `apt` (Ubuntu)    | No package manager                                         |
+| User                  | Runs as `root` or `nobody`          | Runs as `nonroot` user (UID 65532)                         |
+| Data directory        | `/var/lib/grafana-agent/data`       | Configurable via `-metrics.wal-directory`                  |
+| Build process         | Pre-compiled binaries               | Built from source with verified commit                     |
+| Attack surface        | 200+ utilities and tools            | Only `grafana-agent` binary and CA certificates            |
+| Environment variables | `AGENT_DEPLOY_MODE=docker`          | Not set (intentionally omitted)                            |
+| Debugging             | Shell and standard Unix tools       | Use Docker Debug or image mount for troubleshooting        |
+| SBOM                  | Not included                        | Software Bill of Materials included                        |
 
 ### Why no shell or package manager?
 
@@ -107,7 +115,7 @@ or mount debugging tools with the Image Mount feature:
 
 ```
 docker run --rm -it --pid container:my-container \
-  --mount=type=image,source=dhi.io/busybox,destination=/dbg,ro \
+  --mount=type=image,source=dhi.io/busybox:1,destination=/dbg,ro \
   dhi.io/grafana-agent:<tag> /dbg/bin/sh
 ```
 

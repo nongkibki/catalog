@@ -21,7 +21,7 @@ name of the mirrored repository, select **View in repository**.
 ```
 $ docker run --rm \
   --mount type=bind,source="$(pwd)",target=/work --workdir /work \
-  dhi.io/jsonnet:<tag> \
+  dhi.io/go-jsonnet:<tag> \
   -e "{ x: 10, y: self.x + 1 } { x: 1 }" \
   -o output.json
 ```
@@ -40,7 +40,7 @@ To run one of the other included tools, override the entrypoint. For example, to
 ```
 $ docker run --rm --entrypoint jsonnetfmt \
    --mount type=bind,source="$(pwd)",target=/work --workdir /work \
-   dhi.io/jsonnet:<tag> \
+   dhi.io/go-jsonnet:<tag> \
    -o test_formatted.jsonnet test.jsonnet
 ```
 
@@ -62,6 +62,10 @@ their tag.
   - Run as the root user
   - Include a shell and package manager
   - Are used to build or compile applications
+
+- FIPS variants include `fips` in the variant name and tag. They come in both runtime and build-time variants. These
+  variants use cryptographic modules that have been validated under FIPS 140, a U.S. government standard for secure
+  cryptographic operations. For example, usage of MD5 fails in FIPS variants.
 
 To view the image variants and get more information about them, select the **Tags** tab for this repository, and then
 select a tag.

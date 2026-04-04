@@ -19,11 +19,29 @@ visibility.
 
 ### Start a Hubble Relay image
 
+Hubble Relay requires TLS certificates by default. For testing without TLS, use the `--disable-server-tls` and
+`--disable-client-tls` flags:
+
 ```bash
 docker run --name hubble-relay -p 4245:4245 -p 4222:4222 \
-  -e HUBBLE_SERVER=hubble.cilium.svc.cluster.local:4244 \
-  dhi.io/hubble-relay:<tag>
+  dhi.io/hubble-relay:<tag> serve \
+  --disable-server-tls --disable-client-tls \
+  --peer-service hubble.cilium.svc.cluster.local:4244
 ```
+
+For production deployments, configure TLS certificates by mounting certificate files and using the TLS flags:
+
+```bash
+docker run --name hubble-relay -p 4245:4245 -p 4222:4222 \
+  -v /path/to/certs:/etc/certs:ro \
+  dhi.io/hubble-relay:<tag> serve \
+  --tls-relay-server-cert-file /etc/certs/server.crt \
+  --tls-relay-server-key-file /etc/certs/server.key \
+  --peer-service hubble.cilium.svc.cluster.local:4244
+```
+
+> **Note:** Replace `/path/to/certs` with the path to your certificate directory. Certificates can be generated
+> manually, provided by cert-manager in Kubernetes, or obtained from your certificate authority.
 
 ## Common use cases
 
@@ -89,8 +107,9 @@ or mount debugging tools with the Image Mount feature:
 
 ```
 docker run --rm -it --pid container:my-container \
-  --mount=type=image,source=dhi.io/busybox,destination=/dbg,ro \
-  dhi.io/hubble-relay:<tag> /dbg/bin/sh
+  --mount=type=image,source=dhi.io/busybox:1,destination=/dbg,ro \
+  --entrypoint /dbg/bin/sh \
+  dhi.io/hubble-relay:<tag>
 ```
 
 ## Image variants
@@ -110,6 +129,10 @@ multi-stage Dockerfile. These images typically:
 - Run as the root user
 - Include a shell and package manager
 - Are used to build or compile applications
+
+FIPS variants include `fips` in the variant name and tag. They come in both runtime and build-time variants. These
+variants use cryptographic modules that have been validated under FIPS 140, a U.S. government standard for secure
+cryptographic operations. For example, usage of MD5 fails in FIPS variants.
 
 ## Migrate to a Docker Hardened Image
 

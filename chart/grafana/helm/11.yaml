@@ -1,0 +1,96 @@
+# syntax=dhi.io/build:2-helm3
+
+name: Grafana Helm chart 11.x
+image: dhi.io/grafana-chart
+variant: helm
+tags:
+  - 11.3.7
+platforms:
+  - linux/amd64
+vars:
+  BATS_REFERENCE: dhi/bats:1.13.0-debian13@sha256:1970372446865c7ac4b1e1cb603caeae2a44b3172778b2f2b8c8434ca5a8ae0c
+  BUSYBOX_REFERENCE: dhi/busybox:1.37.0-debian13@sha256:19defb1059fdfbf20742eb8057c823d9a46d2aa9c0506ada9e9e211f53b32ac6
+  CHART_COMMIT_SHA: fcd1ef1e7e006fcee398616f624c6b6ab33a50bb
+  CURL_REFERENCE: dhi/curl:8.14.1-debian13@sha256:80683a8dea031a1edec1b29a7e96556f88d7b0b70a31fcea63cd34c7a6614da0
+  DHI_NAMESPACE: dhi
+  DHI_PREFIX: ""
+  DHI_REGISTRY: dhi.io
+  DHI_SKIP_CONTEXT_COPY: "true"
+  GRAFANA_IMAGE_RENDERER_REFERENCE: dhi/grafana-image-renderer:5.7.3-debian13@sha256:7bf6f40203b0ef8d67a1c6b4b64096e720482df9078b2a1c731690c664429007
+  GRAFANA_REFERENCE: dhi/grafana:12.3.6-debian13@sha256:f59c0c700b3214b606e621598bcd72633276bfaa7ea13faa17290e3cdb965f65
+  HELM_REFERENCE: dhi/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+  K8S_SIDECAR_REFERENCE: dhi/k8s-sidecar:2.5.2-debian13@sha256:7670f10448958f2055cb3ec8db5880704080546ce8cbc78060864cb0d80a98a0
+  SEMVER_MAJOR_MINOR_VERSION: "11.3"
+  SEMVER_MAJOR_VERSION: "11"
+  SEMVER_VERSION: 11.3.7
+  VERSION: 11.3.7
+contents:
+  builds:
+    - name: grafana
+      uses: dhi.io/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+      contents:
+        packages:
+          - bash
+          - build-essential
+          - coreutils
+          - grep
+          - libc-bin
+          - sed
+        files:
+          - url: git+https://github.com/grafana-community/helm-charts.git#grafana-11.3.7
+            checksum: fcd1ef1e7e006fcee398616f624c6b6ab33a50bb
+            path: ${source.dir}/helm-charts
+            uid: 0
+            gid: 0
+      pipeline:
+        - name: prepare chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/charts/grafana
+          with:
+            chart:
+              appRef: grafana
+              description: Docker Hardened Images Helm chart for Grafana
+              images:
+                - name: grafana
+                  ref: dhi/grafana:12.3.6-debian13@sha256:f59c0c700b3214b606e621598bcd72633276bfaa7ea13faa17290e3cdb965f65
+                - name: grafana-image-renderer
+                  ref: dhi/grafana-image-renderer:5.7.3-debian13@sha256:7bf6f40203b0ef8d67a1c6b4b64096e720482df9078b2a1c731690c664429007
+                - name: bats
+                  ref: dhi/bats:1.13.0-debian13@sha256:1970372446865c7ac4b1e1cb603caeae2a44b3172778b2f2b8c8434ca5a8ae0c
+                - name: busybox
+                  ref: dhi/busybox:1.37.0-debian13@sha256:19defb1059fdfbf20742eb8057c823d9a46d2aa9c0506ada9e9e211f53b32ac6
+                - name: curl
+                  ref: dhi/curl:8.14.1-debian13@sha256:80683a8dea031a1edec1b29a7e96556f88d7b0b70a31fcea63cd34c7a6614da0
+                - name: k8s-sidecar
+                  ref: dhi/k8s-sidecar:2.5.2-debian13@sha256:7670f10448958f2055cb3ec8db5880704080546ce8cbc78060864cb0d80a98a0
+              name: grafana-chart
+              notes: ${source.dir}/config/NOTES.txt
+              sourceUrl: https://github.com/grafana-community/helm-charts
+            cmd: prepare
+            registry: dhi.io
+        - name: relocate chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/charts/grafana
+          with:
+            cmd: patch
+            patches:
+              from: ${source.dir}/config
+            registry: dhi.io
+        - name: lint
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/helm-charts/charts
+          with:
+            chart: grafana
+            cmd: lint .
+        - name: package
+          uses: helm/package@v1
+          work-dir: ${source.dir}/helm-charts/charts
+          with:
+            chart: grafana
+      paths:
+        - type: directory
+          path: ${source.dir}/config
+          uid: 0
+          gid: 0
+          mode: "0644"
+          source: chart/grafana/config

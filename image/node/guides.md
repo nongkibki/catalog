@@ -152,6 +152,104 @@ Hello World from Docker Hardened Node.js!
 
 You can also visit `http://localhost:3000` in your browser to see the same message.
 
+## Yarn Configuration
+
+### Yarn Version Compatibility
+
+Docker Hardened Node.js images support all versions of Yarn (v1.x Classic and v2+/v4+ Berry) out of the box. The images
+do not set any Yarn-specific environment variables that could interfere with your project's Yarn configuration.
+
+### Using Yarn v1 (Classic)
+
+Yarn v1 (Classic) is included in the Node.js images by default. No additional configuration is needed:
+
+```dockerfile
+FROM dhi.io/node:<tag>-dev AS build-stage
+
+WORKDIR /usr/src/app
+COPY package*.json yarn.lock ./
+
+# Yarn v1 works out of the box
+RUN yarn install --frozen-lockfile
+```
+
+If you want to disable Yarn's update checks in your project, add to your project's `.yarnrc` file:
+
+```
+disable-self-update-check true
+```
+
+### Using Yarn v2+ (Berry) / Yarn v4
+
+To use modern Yarn versions (v2+, v3, v4), use Corepack which is included in Node.js:
+
+```dockerfile
+FROM dhi.io/node:<tag>-dev AS build-stage
+
+WORKDIR /usr/src/app
+
+# Enable Corepack and prepare Yarn version
+RUN corepack enable
+
+# Copy package files (package.json should specify packageManager)
+COPY package*.json yarn.lock .yarnrc.yml ./
+
+# Install dependencies with Yarn v4
+RUN yarn install --immutable
+```
+
+Your `package.json` should specify the Yarn version:
+
+```json
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "packageManager": "yarn@4.10.3",
+  "dependencies": {
+    ...
+  }
+}
+```
+
+### Why No YARN_DISABLE_SELF_UPDATE_CHECK?
+
+Previous versions of Docker Hardened Node.js images set the `YARN_DISABLE_SELF_UPDATE_CHECK=true` environment variable
+globally. This was removed because:
+
+1. **Yarn v2+/v4+ compatibility**: This environment variable is a Yarn v1 (Classic) configuration that causes Yarn v2+
+   to fail immediately with an error
+1. **Project control**: Projects should control their own Yarn configuration rather than inheriting it from base images
+1. **Non-breaking for Yarn v1**: Yarn v1 works correctly without this environment variable; it just performs update
+   checks (which are non-blocking)
+
+If you're using Yarn v1 and want to disable update checks, add the configuration to your project's `.yarnrc` file as
+shown above.
+
+### Troubleshooting Yarn Issues
+
+#### Error: "Unrecognized or legacy configuration settings found: disableSelfUpdateCheck"
+
+This error occurs when using Yarn v2+ with an environment variable or configuration meant for Yarn v1. Docker Hardened
+Node.js images no longer set this variable, but if you're seeing this error:
+
+1. Check if you're setting `YARN_DISABLE_SELF_UPDATE_CHECK` in your Dockerfile
+1. Check if you have a legacy `.yarnrc` file (without `.yml` extension) with Yarn v1 configuration
+1. Ensure you're using `.yarnrc.yml` for Yarn v2+ configuration
+
+#### Yarn version mismatch
+
+If you're using Corepack and the wrong Yarn version is being used:
+
+```dockerfile
+# Explicitly prepare the Yarn version from package.json
+RUN corepack enable && corepack prepare yarn@$(node -p "require('./package.json').packageManager.split('@')[1]") --activate
+```
+
+For more information about Yarn configuration, see:
+
+- [Yarn v1 (Classic) Documentation](https://classic.yarnpkg.com/)
+- [Yarn v2+/v4 (Berry) Documentation](https://yarnpkg.com/)
+
 ## Non-hardened images vs Docker Hardened Images
 
 ### Key differences

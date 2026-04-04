@@ -38,22 +38,22 @@ For production use, mount a volume for persistent storage:
 $ docker run -d --name alertmanager -p 9093:9093 \
   -v alertmanager_data:/data \
   dhi.io/alertmanager:<tag> \
+  --config.file=/etc/alertmanager/alertmanager.yml \
   --storage.path=/data
 ```
 
 ### With custom configuration
 
-Mount your Alertmanager configuration (YAML) and optional persistent storage:
+Mount your Alertmanager configuration (YAML). Persistent storage uses the default `/alertmanager` path:
 
 ```bash
 $ docker run -d --name alertmanager -p 9093:9093 \
   -v /path/to/config.yml:/etc/alertmanager/alertmanager.yml:ro \
-  -v alertmanager_data:/data \
   dhi.io/alertmanager:<tag>
 ```
 
 - Configuration file path (container): /etc/alertmanager/alertmanager.yml
-- Storage (container): /data
+- Storage (container): /alertmanager (default)
 
 ### Docker Compose (Prometheus + Alertmanager)
 
@@ -90,10 +90,7 @@ alerting:
 ## Environment variables and flags
 
 Alertmanager is primarily configured via its YAML config file and command-line flags. The upstream Alertmanager releases
-provide the binaries. Notable container-level environment values (informational):
-
-| Variable | Description | Default | Required | |----------|-------------|---------|----------| | APP_VERSION |
-Application version | 0.28.1 | No | | HOME | Container home | / | No |
+provide the binaries.
 
 ### Default command for Alertmanager image
 
@@ -108,7 +105,8 @@ orchestration system).
 **Common Alertmanager runtime flags (passed as CMD/args or via entrypoint):**
 
 - `--config.file=/etc/alertmanager/alertmanager.yml` (path to config)
-- `--storage.path=/data` (path for persisted data when you mount /data)
+- `--storage.path=/alertmanager` (default path for persisted data)
+- `--storage.path=/data` (alternative path when explicitly mounting a volume to /data)
 - `--web.listen-address=0.0.0.0:9093`
 
 If your environment or orchestration system injects flags or environment variables, ensure files and mounted volumes are
@@ -133,7 +131,8 @@ Mount this file to /etc/alertmanager/alertmanager.yml when starting the containe
 
 - Single-node alerting (development)
 
-  - Use a single Alertmanager instance with persistent storage mounted to /data.
+  - Use a single Alertmanager instance with persistent storage. Use the default `/alertmanager` path, or mount a volume
+    to `/data` and specify `--storage.path=/data`.
 
 - High availability (production)
 
@@ -148,8 +147,10 @@ Mount this file to /etc/alertmanager/alertmanager.yml when starting the containe
 
 ## Persisting data
 
-Persist Alertmanager state by mounting a volume at /data. Ensure the mounted directory has permissions appropriate for a
-non-root container UID (65532 for nonroot user).
+Persist Alertmanager state by mounting a volume. The default storage path is `/alertmanager` (pre-created in the image).
+You can use a custom path like `/data` by mounting a volume to `/data` and specifying `--storage.path=/data`. Note that
+`/data` is not pre-created in the image; it will be created automatically when you mount a volume to it. Ensure the
+mounted directory has permissions appropriate for a non-root container UID (65532 for nonroot user).
 
 ## amtool (CLI)
 

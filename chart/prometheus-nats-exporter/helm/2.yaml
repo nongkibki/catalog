@@ -1,0 +1,83 @@
+# syntax=dhi.io/build:2-helm3
+
+name: Prometheus NATS Exporter Helm chart 2.x
+image: dhi.io/prometheus-nats-exporter-chart
+variant: helm
+tags:
+  - 2.22.1
+platforms:
+  - linux/amd64
+vars:
+  CHART_COMMIT_SHA: 3f6226d4b4ef9c4d4f0bd376d495b9b661bb0013
+  DHI_NAMESPACE: dhi
+  DHI_PREFIX: ""
+  DHI_REGISTRY: dhi.io
+  DHI_SKIP_CONTEXT_COPY: "true"
+  HELM_REFERENCE: dhi/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+  PROMETHEUS_NATS_EXPORTER_REFERENCE: dhi/prometheus-nats-exporter:0.19.2-debian13@sha256:976f4a4228742b4643847fa30183311992a61030ed0f5be959324aa43840764b
+  SEMVER_MAJOR_MINOR_VERSION: "2.22"
+  SEMVER_MAJOR_VERSION: "2"
+  SEMVER_VERSION: 2.22.1
+  VERSION: 2.22.1
+contents:
+  builds:
+    - name: prometheus-nats-exporter-chart
+      uses: dhi.io/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+      contents:
+        files:
+          - url: git+https://github.com/prometheus-community/helm-charts.git#prometheus-nats-exporter-2.22.1
+            checksum: 3f6226d4b4ef9c4d4f0bd376d495b9b661bb0013
+            path: ${source.dir}/helm-charts
+            uid: 0
+            gid: 0
+      pipeline:
+        - name: prepare chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/charts/prometheus-nats-exporter
+          with:
+            chart:
+              appRef: prometheus-nats-exporter
+              description: Docker Hardened Images Helm chart for Prometheus NATS Exporter
+              images:
+                - name: prometheus-nats-exporter
+                  ref: dhi/prometheus-nats-exporter:0.19.2-debian13@sha256:976f4a4228742b4643847fa30183311992a61030ed0f5be959324aa43840764b
+              name: prometheus-nats-exporter-chart
+              notes: ${source.dir}/config/NOTES.txt
+              sourceUrl: https://github.com/prometheus-community/helm-charts
+            cmd: prepare
+            registry: dhi.io
+        - name: relocate chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/charts/prometheus-nats-exporter
+          with:
+            cmd: patch
+            debug: true
+            patches:
+              from: ${source.dir}/config
+            process-templates: true
+            registry: dhi.io
+        - name: update dependencies
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/helm-charts/charts
+          privileged: true
+          with:
+            chart: prometheus-nats-exporter
+            cmd: dependency update
+        - name: lint
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/helm-charts/charts
+          with:
+            chart: prometheus-nats-exporter
+            cmd: lint .
+        - name: package
+          uses: helm/package@v1
+          work-dir: ${source.dir}/helm-charts/charts
+          with:
+            chart: prometheus-nats-exporter
+      paths:
+        - type: directory
+          path: ${source.dir}/config
+          uid: 0
+          gid: 0
+          mode: "0644"
+          source: chart/prometheus-nats-exporter/config

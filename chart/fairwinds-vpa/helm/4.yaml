@@ -1,0 +1,103 @@
+# syntax=dhi.io/build:2-helm3
+
+name: Fairwinds VPA Helm chart 4.x
+image: dhi.io/fairwinds-vpa-chart
+variant: helm
+tags:
+  - 4.11.0
+platforms:
+  - linux/amd64
+vars:
+  CHART_COMMIT_SHA: 668395099685a5057ec86f0df71c028c46487243
+  DHI_NAMESPACE: dhi
+  DHI_PREFIX: ""
+  DHI_REGISTRY: dhi.io
+  DHI_SKIP_CONTEXT_COPY: "true"
+  HELM_REFERENCE: dhi/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+  KUBE_WEBHOOK_CERTGEN_REFERENCE: dhi/kube-webhook-certgen:1.8.0-debian13@sha256:e41e85a99f66870bff343531b1b82a1d206308f349d32b12e48b456b18d56f71
+  KUBECTL_REFERENCE: dhi/kubectl:1.35.3-debian13@sha256:8baebb9bb237432f79d6d9c928ebd64a44d24222e05d1cd8e1290831faed4a4e
+  METRICS_SERVER_REFERENCE: dhi/metrics-server-chart:3.13.0@sha256:503881ef7fa04d463c6212989398579a82149b517aac45a652bd165c19c64564
+  SEMVER_MAJOR_MINOR_VERSION: "4.11"
+  SEMVER_MAJOR_VERSION: "4"
+  SEMVER_VERSION: 4.11.0
+  VERSION: 4.11.0
+  VPA_ADMISSION_CONTROLLER_REFERENCE: dhi/vpa-admission-controller:1.6.0-debian13@sha256:967cc949fc3ef8c46ab0b96ea2624092438c95947c71f199ac5faa08580f693e
+  VPA_RECOMMENDER_REFERENCE: dhi/vpa-recommender:1.6.0-debian13@sha256:9f747e80d84cdc4fba755579dcb9fbbcbdabca6bb92c2c6bdfabdd7a77726ee4
+  VPA_UPDATER_REFERENCE: dhi/vpa-updater:1.6.0-debian13@sha256:0494aa435546ca6fb612aa028f8f347bac1c0232dfa448a41bcc86f8cd353a68
+contents:
+  builds:
+    - name: fairwinds-vpa-chart
+      uses: dhi.io/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+      contents:
+        files:
+          - url: git+https://github.com/FairwindsOps/charts.git#668395099685a5057ec86f0df71c028c46487243
+            checksum: 668395099685a5057ec86f0df71c028c46487243
+            path: ${source.dir}/helm-charts
+            uid: 0
+            gid: 0
+      pipeline:
+        - name: prepare chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/stable/vpa
+          with:
+            chart:
+              appRef: vpa-admission-controller
+              dependencies:
+                - alias: metrics-server
+                  condition: metrics-server.enabled
+                  name: metrics-server
+                  ref: dhi/metrics-server-chart:3.13.0@sha256:503881ef7fa04d463c6212989398579a82149b517aac45a652bd165c19c64564
+              description: Docker Hardened Images Helm chart for Fairwinds VPA
+              images:
+                - name: vpa-admission-controller
+                  ref: dhi/vpa-admission-controller:1.6.0-debian13@sha256:967cc949fc3ef8c46ab0b96ea2624092438c95947c71f199ac5faa08580f693e
+                - name: vpa-recommender
+                  ref: dhi/vpa-recommender:1.6.0-debian13@sha256:9f747e80d84cdc4fba755579dcb9fbbcbdabca6bb92c2c6bdfabdd7a77726ee4
+                - name: vpa-updater
+                  ref: dhi/vpa-updater:1.6.0-debian13@sha256:0494aa435546ca6fb612aa028f8f347bac1c0232dfa448a41bcc86f8cd353a68
+                - name: kube-webhook-certgen
+                  ref: dhi/kube-webhook-certgen:1.8.0-debian13@sha256:e41e85a99f66870bff343531b1b82a1d206308f349d32b12e48b456b18d56f71
+                - name: kubectl
+                  ref: dhi/kubectl:1.35.3-debian13@sha256:8baebb9bb237432f79d6d9c928ebd64a44d24222e05d1cd8e1290831faed4a4e
+              name: fairwinds-vpa-chart
+              notes: ${source.dir}/config/NOTES.txt
+              sourceUrl: https://github.com/FairwindsOps/charts
+            cmd: prepare
+            registry: dhi.io
+        - name: relocate chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/stable/vpa
+          with:
+            cmd: patch
+            patches:
+              from: ${source.dir}/config
+            registry: dhi.io
+        - name: helm login
+          uses: helm/login@v1
+          with:
+            registry: dhi.io
+        - name: update dependencies
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/helm-charts/stable
+          privileged: true
+          with:
+            chart: vpa
+            cmd: dependency update
+        - name: lint
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/helm-charts/stable
+          with:
+            chart: vpa
+            cmd: lint .
+        - name: package
+          uses: helm/package@v1
+          work-dir: ${source.dir}/helm-charts/stable
+          with:
+            chart: vpa
+      paths:
+        - type: directory
+          path: ${source.dir}/config
+          uid: 0
+          gid: 0
+          mode: "0644"
+          source: chart/fairwinds-vpa/config

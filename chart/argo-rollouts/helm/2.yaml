@@ -1,0 +1,92 @@
+# syntax=dhi.io/build:2-helm3
+
+name: Argo Rollouts Helm chart 2.x
+image: dhi.io/argo-rollouts-chart
+variant: helm
+tags:
+  - 2.40.9
+platforms:
+  - linux/amd64
+vars:
+  ARGO_ROLLOUTS_REFERENCE: dhi/argo-rollouts:1.9.0-debian13@sha256:cb855bcf878d829c1aa428de57531ca24762d94cd00d1ecf112e6e908d291c45
+  CHART_COMMIT_SHA: 0071700ffc396050b4c17b4415610fd9ebb93a3c
+  DHI_NAMESPACE: dhi
+  DHI_PREFIX: ""
+  DHI_REGISTRY: dhi.io
+  DHI_SKIP_CONTEXT_COPY: "true"
+  HELM_REFERENCE: dhi/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+  KUBECTL_ARGO_ROLLOUTS_REFERENCE: dhi/kubectl-argo-rollouts:1.9.0-debian13@sha256:fb953665343ca680ea3d0efa6352fa828a9578b2df8993187e620132679af62c
+  SEMVER_MAJOR_MINOR_VERSION: "2.40"
+  SEMVER_MAJOR_VERSION: "2"
+  SEMVER_VERSION: 2.40.9
+  VERSION: 2.40.9
+contents:
+  builds:
+    - name: argo-rollouts
+      uses: dhi.io/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+      contents:
+        packages:
+          - bash
+          - build-essential
+          - coreutils
+          - grep
+          - libc-bin
+          - sed
+        files:
+          - url: git+https://github.com/argoproj/argo-helm#argo-rollouts-2.40.9
+            checksum: 0071700ffc396050b4c17b4415610fd9ebb93a3c
+            path: ${source.dir}/helm-charts
+            uid: 0
+            gid: 0
+      pipeline:
+        - name: prepare chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/charts/argo-rollouts
+          with:
+            chart:
+              appRef: argo-rollouts
+              dependencies: null
+              description: Docker Hardened Images Helm chart for Argo Rollouts
+              images:
+                - name: argo-rollouts
+                  ref: dhi/argo-rollouts:1.9.0-debian13@sha256:cb855bcf878d829c1aa428de57531ca24762d94cd00d1ecf112e6e908d291c45
+                - name: kubectl-argo-rollouts
+                  ref: dhi/kubectl-argo-rollouts:1.9.0-debian13@sha256:fb953665343ca680ea3d0efa6352fa828a9578b2df8993187e620132679af62c
+              name: argo-rollouts-chart
+              notes: ${source.dir}/config/NOTES.txt
+              sourceUrl: https://github.com/argoproj/argo-helm
+            cmd: prepare
+            registry: dhi.io
+        - name: relocate chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/charts/argo-rollouts
+          with:
+            cmd: patch
+            patches:
+              from: ${source.dir}/config
+            registry: dhi.io
+        - name: update dependencies
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/helm-charts/charts
+          privileged: true
+          with:
+            chart: argo-rollouts
+            cmd: dependency update
+        - name: lint
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/helm-charts/charts
+          with:
+            chart: argo-rollouts
+            cmd: lint .
+        - name: package
+          uses: helm/package@v1
+          work-dir: ${source.dir}/helm-charts/charts
+          with:
+            chart: argo-rollouts
+      paths:
+        - type: directory
+          path: ${source.dir}/config
+          uid: 0
+          gid: 0
+          mode: "0644"
+          source: chart/argo-rollouts/config

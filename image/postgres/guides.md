@@ -116,14 +116,8 @@ If a database is initialized with another image and then run with the DHI, these
   image and should not be overridden.
 - `PG_MINOR`: Contains the PostgreSQL minor version number. This variable is automatically set by the image and should
   not be overridden.
-- `PGDATA`: Automatically set to `/var/lib/postgresql/<MAJOR_VERSION>/data`. While you can override this, it's
-  recommended to use the default value.
-
-The versioned PGDATA path ensures:
-
-- Clear separation between different PostgreSQL major versions
-- Easier upgrades and migrations
-- Prevention of accidental data mixing between versions
+- `PGDATA`: Automatically set to `/var/lib/postgresql/<MAJOR_VERSION>/data`. Note that when mounting volumes, the best
+  practice is to mount to `/var/lib/postgresql` (the parent directory), not to the `PGDATA` path directly.
 
 Example with multiple environment variables:
 
@@ -135,6 +129,46 @@ docker run --name postgres-configured -d \
   -e POSTGRES_INITDB_ARGS="--encoding=UTF8 --locale=C" \
   dhi.io/postgres:<tag>
 ```
+
+## Persisting data with volumes
+
+### Mount to /var/lib/postgresql (recommended)
+
+The recommended approach is to mount your volume to `/var/lib/postgresql` rather than directly to the versioned `PGDATA`
+directory:
+
+```bash
+docker run --name my-postgres -d \
+  -e POSTGRES_PASSWORD=mysecretpassword \
+  -v postgres-data:/var/lib/postgresql \
+  dhi.io/postgres:<tag>
+```
+
+This is the preferred method because it:
+
+- Supports upgrade workflows: Multiple PostgreSQL major versions can coexist in the same volume, making upgrades between
+  major versions easier
+- Follows PostgreSQL best practices: Aligns with the pattern used by Docker Official Images and recommended by
+  PostgreSQL maintainers
+- Ensures future compatibility: Your volume mount commands don't need to change when you upgrade PostgreSQL major
+  versions
+
+With this approach, the image automatically creates the versioned subdirectory inside your mounted volume.
+
+### Mount directly to PGDATA
+
+While mounting directly to the versioned `PGDATA` path works, it's generally not recommended:
+
+```bash
+# Not recommended for most use cases
+docker run --name my-postgres -d \
+  -e POSTGRES_PASSWORD=mysecretpassword \
+  -v postgres-data:/var/lib/postgresql/16/data \
+  dhi.io/postgres:16
+```
+
+Use direct `PGDATA` mounting only when you have specific requirements that necessitate it, such as very specialized
+deployment patterns or when migrating from existing setups.
 
 ## Stop PostgreSQL containers
 
@@ -188,14 +222,14 @@ This is especially important in production environments where data integrity is 
 
 ### Key differences
 
-| Feature         | Docker Official PostgreSQL          | Docker Hardened PostgreSQL                          |
-| --------------- | ----------------------------------- | --------------------------------------------------- |
-| Security        | Standard base with common utilities | Minimal, hardened base with security patches        |
-| Package manager | apt/apk available                   | No package manager in runtime variants              |
-| User            | Runs as postgres user               | Runs as nonroot user for enhanced security          |
-| Attack surface  | Larger due to additional utilities  | Minimal, only contains essential components         |
-| PGDATA location | `/var/lib/postgresql/data`          | `/var/lib/postgresql/<MAJOR_VERSION>/data`          |
-| Debugging       | Traditional shell debugging         | Use Docker Debug or Image Mount for troubleshooting |
+| Feature         | Docker Official PostgreSQL                                                           | Docker Hardened PostgreSQL                                |
+| --------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| Security        | Standard base with common utilities                                                  | Minimal, hardened base with security patches              |
+| Package manager | apt/apk available                                                                    | No package manager in runtime variants                    |
+| User            | Runs as postgres user                                                                | Runs as nonroot user for enhanced security                |
+| Attack surface  | Larger due to additional utilities                                                   | Minimal, only contains essential components               |
+| PGDATA location | `/var/lib/postgresql/data` (≤17), `/var/lib/postgresql/<MAJOR_VERSION>/docker` (18+) | `/var/lib/postgresql/<MAJOR_VERSION>/data` (all versions) |
+| Debugging       | Traditional shell debugging                                                          | Use Docker Debug or Image Mount for troubleshooting       |
 
 ## Why no package manager?
 
@@ -259,7 +293,7 @@ following table of migration notes.
 | TLS certificates   | Docker Hardened Images contain standard TLS certificates by default. There is no need to install TLS certificates.                                                                                                                                                                                                           |
 | Ports              | Non-dev hardened images run as a nonroot user by default. As a result, applications in these images can't bind to privileged ports (below 1024) when running in Kubernetes or in Docker Engine versions older than 20.10. To avoid issues, configure your application to listen on port 1025 or higher inside the container. |
 | Entry point        | Docker Hardened Images may have different entry points than images such as Docker Official Images. Inspect entry points for Docker Hardened Images and update your Dockerfile if necessary.                                                                                                                                  |
-| PGDATA path        | DHI PostgreSQL uses `/var/lib/postgresql/<MAJOR_VERSION>/data` instead of `/var/lib/postgresql/data`. Update volume mounts and backup scripts accordingly.                                                                                                                                                                   |
+| PGDATA path        | DHI PostgreSQL uses versioned `PGDATA` paths (`/var/lib/postgresql/<MAJOR_VERSION>/data`). The recommended approach is to mount volumes to `/var/lib/postgresql` rather than directly to `PGDATA`.                                                                                                                           |
 
 The following steps outline the general migration process.
 
@@ -294,13 +328,16 @@ The following steps outline the general migration process.
 
 1. **Update volume mounts for PGDATA**.
 
-   Update any volume mounts to use the new versioned data directory:
+   The recommended approach is to mount volumes to the parent directory `/var/lib/postgresql`, which supports upgrade
+   workflows:
 
-   ```
-   # Update docker-compose.yml or docker run commands
+   ```yaml
+   # Recommended: Update docker-compose.yml or docker run commands
    volumes:
-     - postgres-data:/var/lib/postgresql/16/data  # for PostgreSQL 16
+     - postgres-data:/var/lib/postgresql
    ```
+
+   This allows the image to automatically manage the versioned subdirectories and makes major version upgrades easier.
 
 ## Troubleshooting migration
 
@@ -352,8 +389,13 @@ to inspect entry points for Docker Hardened Images and update your Dockerfile if
 ### PGDATA migration from Docker Official Images
 
 When migrating existing PostgreSQL deployments from Docker Official Images or other PostgreSQL images (such as Bitnami
-PostgreSQL, postgres:alpine, or custom images), you need to account for the different data directory location. Most
-PostgreSQL images use `/var/lib/postgresql/data`, while DHI uses a versioned path.
+PostgreSQL, postgres:alpine, or custom images), you need to account for different data directory patterns:
+
+- Docker Official Images PostgreSQL ≤17: `/var/lib/postgresql/data` (non-versioned)
+- Docker Official Images PostgreSQL 18+: `/var/lib/postgresql/<MAJOR>/docker` (versioned)
+- Docker Hardened Images all versions: `/var/lib/postgresql/<MAJOR_VERSION>/data` (versioned)
+
+Regardless of the source, the recommended approach for both DOI and DHI is to mount volumes to `/var/lib/postgresql`.
 
 #### Versioned PGDATA paths
 
@@ -377,15 +419,20 @@ This helps prevent accidental data directory mismatches when upgrading PostgreSQ
 
 #### Migration options
 
-For new deployments, use the versioned path when mounting volumes:
+For new deployments, mount to the parent directory to support upgrade workflows:
 
 ```bash
-# Old (Docker Official)
+# Old (Docker Official PostgreSQL ≤17)
 -v postgres-data:/var/lib/postgresql/data
 
-# New (Docker Hardened) - replace 16 with your major version
--v postgres-data:/var/lib/postgresql/16/data
+# Recommended (both DOI 18+ and DHI all versions)
+-v postgres-data:/var/lib/postgresql
 ```
+
+The image will automatically create the versioned subdirectory inside your mounted volume:
+
+- DHI: `16/data`, `17/data`, etc.
+- DOI 18+: `18/docker`, `19/docker`, etc.
 
 For existing data migration, choose an option:
 
@@ -408,26 +455,26 @@ For existing data migration, choose an option:
   Stop old container:
 
   ```bash
-  docker post old-postgres
+  docker stop old-postgres
   ```
 
-  Copy data to a new location (replace `16` with your major version):
+  Copy data to a new location with versioned subdirectory (replace `16` with your major version):
 
   ```bash
   docker run --rm \
     -v old-postgres-data:/old \
     -v new-postgres-data:/new \
-    busybox sh -c "cp -a /old/. /new/16/"
+    busybox sh -c "cp -a /old/. /new/16/data/"
   ```
 
-  Start new DHI container with new volume:
+  Start new DHI container with parent directory mount:
 
   ```bash
   docker run --name new-postgres -d \
     -e POSTGRES_PASSWORD=mysecretpassword \
-    -v new-postgres-data:/var/lib/postgresql/16/data \
+    -v new-postgres-data:/var/lib/postgresql \
     dhi.io/postgres:16
   ```
 
-  If your PostgreSQL container fails to start or you can't find your data, verify you're using the correct PGDATA path
-  for your PostgreSQL major version.
+  This approach mounts the volume to `/var/lib/postgresql`, which will contain the `16/data` subdirectory with your
+  migrated data. This makes future major version upgrades easier.

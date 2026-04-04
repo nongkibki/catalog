@@ -19,7 +19,7 @@ runtime stage.
 
 Create a new directory and use the following Dockerfile to get started. Replace `<tag>` with the image variant.
 
-```
+```Dockerfile
 # syntax=docker/dockerfile:1
 
 ## -----------------------------------------------------
@@ -142,6 +142,34 @@ available modules. You should see the following output if FIPS is enabled:
 ```
 MD5: Disabled (FIPS safe)
 Cipher count: 26
+```
+
+#### Recompiling Python dependencies with the FIPS OpenSSL provider
+
+When importing Python packages that have binaries pre-built it can happen that those binaries might have been statically
+linked to a non-FIPS compliant OpenSSL implementation. Therefore the recommended approach to install those dependencies
+is to build them from source. This makes sure that they are statically linked against our FIPS compliant provider. The
+following is an example:
+
+```Dockerfile
+# syntax=docker/dockerfile:1
+FROM dhi.io/python:<tag>-fips-dev AS build-stage
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/.venv/bin:$PATH"
+
+RUN python -m venv /.venv
+# Rebuild the cryptography binary linking it with OpenSSL
+RUN apk add --no-cache openssl-dev
+RUN pip install --no-cache-dir --no-binary cryptography cryptography boto3
+
+FROM dhi.io/python:<tag>-fips AS build-stage
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/.venv/bin:$PATH"
+WORKDIR /
+COPY --from=build-stage /.venv /.venv
+CMD ["python"]
 ```
 
 ## Migrate to a Docker Hardened Image

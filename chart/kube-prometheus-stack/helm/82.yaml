@@ -1,0 +1,135 @@
+# syntax=dhi.io/build:2-helm3
+
+name: Kube Prometheus Stack Helm chart 82.x
+image: dhi.io/kube-prometheus-stack-chart
+variant: helm
+tags:
+  - 82.17.0
+platforms:
+  - linux/amd64
+vars:
+  ADMISSION_WEBHOOK_REFERENCE: dhi/prometheus-operator-admission-webhook:0.90.1-debian13@sha256:965d79d4d73a49eb2ebc14af7b9608c0ad079599bcc4fa04f51186ff1cd5b44f
+  ALERTMANAGER_REFERENCE: dhi/alertmanager:0.31.1-debian13@sha256:1d0854aa24cdbd119d0775afa934d2d5de3614269e80035db9184ed27ef7a638
+  BUSYBOX_REFERENCE: dhi/busybox:1.37.0-debian13@sha256:19defb1059fdfbf20742eb8057c823d9a46d2aa9c0506ada9e9e211f53b32ac6
+  CHART_COMMIT_SHA: e04ccc6bf69001d52c9ff0c0669be986f74f79d7
+  DHI_NAMESPACE: dhi
+  DHI_PREFIX: ""
+  DHI_REGISTRY: dhi.io
+  DHI_SKIP_CONTEXT_COPY: "true"
+  GRAFANA_CHART_REFERENCE: dhi/grafana-chart:11.3.7@sha256:bc6ccb83070efcb622919c80529932b0dc6c185295204250abde5da68b077ffa
+  HELM_REFERENCE: dhi/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+  KUBE_STATE_METRICS_CHART_REFERENCE: dhi/kube-state-metrics-chart:7.2.2@sha256:c116831a0770eca231f35ce089ca6ad277d8870bce3f4603fe068d3276a55873
+  KUBE_WEBHOOK_CERTGEN_REFERENCE: dhi/kube-webhook-certgen:1.8.0-debian13@sha256:e41e85a99f66870bff343531b1b82a1d206308f349d32b12e48b456b18d56f71
+  KUBECTL_REFERENCE: dhi/kubectl:1.35.3-debian13@sha256:8baebb9bb237432f79d6d9c928ebd64a44d24222e05d1cd8e1290831faed4a4e
+  NODE_EXPORTER_CHART_REFERENCE: dhi/node-exporter-chart:4.52.2@sha256:e95eabaa5f9a3af13cb17c05a6126ef1d5bb58e0fa5d9739e067ab8c7d79a178
+  PROMETHEUS_CONFIG_RELOADER_REFERENCE: dhi/prometheus-config-reloader:0.90.1-debian13@sha256:6ffdba4739ffa45481aaee45bfe050a4b96e787b3ec97b1a59c4a3ec1687af28
+  PROMETHEUS_OPERATOR_REFERENCE: dhi/prometheus-operator:0.90.1-debian13@sha256:05c0c85b9a81602963415d49b316454da0227ce3fc56db361799077f164f2b50
+  PROMETHEUS_REFERENCE: dhi/prometheus:3.11.0-debian13@sha256:5b8495d6a9d126174671769056f0579d3144f644a418624d383bb9fc3d9266ba
+  SEMVER_MAJOR_MINOR_VERSION: "82.17"
+  SEMVER_MAJOR_VERSION: "82"
+  SEMVER_VERSION: 82.17.0
+  THANOS_REFERENCE: dhi/thanos:0.41.0-debian13@sha256:54d1c4217adc373f3a970a975962869f7156c4678e7be006ad104b69932bc1ec
+  VERSION: 82.17.0
+contents:
+  builds:
+    - name: kube-prometheus-stack-chart
+      uses: dhi.io/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+      contents:
+        packages:
+          - bash
+          - build-essential
+          - coreutils
+          - grep
+          - libc-bin
+          - sed
+        files:
+          - url: git+https://github.com/prometheus-community/helm-charts.git#kube-prometheus-stack-82.17.0
+            checksum: e04ccc6bf69001d52c9ff0c0669be986f74f79d7
+            path: ${source.dir}/helm-charts
+            uid: 0
+            gid: 0
+      pipeline:
+        - name: prepare chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/charts/kube-prometheus-stack
+          with:
+            chart:
+              appRef: prometheus-operator
+              dependencies:
+                - condition: crds.enabled
+                  keep: true
+                  name: crds
+                - alias: kube-state-metrics
+                  condition: kubeStateMetrics.enabled
+                  name: kube-state-metrics
+                  ref: dhi/kube-state-metrics-chart:7.2.2@sha256:c116831a0770eca231f35ce089ca6ad277d8870bce3f4603fe068d3276a55873
+                - alias: prometheus-node-exporter
+                  condition: nodeExporter.enabled
+                  name: node-exporter
+                  ref: dhi/node-exporter-chart:4.52.2@sha256:e95eabaa5f9a3af13cb17c05a6126ef1d5bb58e0fa5d9739e067ab8c7d79a178
+                - alias: grafana
+                  condition: grafana.enabled
+                  name: grafana
+                  ref: dhi/grafana-chart:11.3.7@sha256:bc6ccb83070efcb622919c80529932b0dc6c185295204250abde5da68b077ffa
+              description: Docker Hardened Images Helm chart for Kube Prometheus Stack
+              images:
+                - name: busybox
+                  ref: dhi/busybox:1.37.0-debian13@sha256:19defb1059fdfbf20742eb8057c823d9a46d2aa9c0506ada9e9e211f53b32ac6
+                - name: kubectl
+                  ref: dhi/kubectl:1.35.3-debian13@sha256:8baebb9bb237432f79d6d9c928ebd64a44d24222e05d1cd8e1290831faed4a4e
+                - name: alertmanager
+                  ref: dhi/alertmanager:0.31.1-debian13@sha256:1d0854aa24cdbd119d0775afa934d2d5de3614269e80035db9184ed27ef7a638
+                - name: prometheus-operator-admission-webhook
+                  ref: dhi/prometheus-operator-admission-webhook:0.90.1-debian13@sha256:965d79d4d73a49eb2ebc14af7b9608c0ad079599bcc4fa04f51186ff1cd5b44f
+                - name: kube-webhook-certgen
+                  ref: dhi/kube-webhook-certgen:1.8.0-debian13@sha256:e41e85a99f66870bff343531b1b82a1d206308f349d32b12e48b456b18d56f71
+                - name: prometheus-operator
+                  ref: dhi/prometheus-operator:0.90.1-debian13@sha256:05c0c85b9a81602963415d49b316454da0227ce3fc56db361799077f164f2b50
+                - name: prometheus-config-reloader
+                  ref: dhi/prometheus-config-reloader:0.90.1-debian13@sha256:6ffdba4739ffa45481aaee45bfe050a4b96e787b3ec97b1a59c4a3ec1687af28
+                - name: thanos
+                  ref: dhi/thanos:0.41.0-debian13@sha256:54d1c4217adc373f3a970a975962869f7156c4678e7be006ad104b69932bc1ec
+                - name: prometheus
+                  ref: dhi/prometheus:3.11.0-debian13@sha256:5b8495d6a9d126174671769056f0579d3144f644a418624d383bb9fc3d9266ba
+              name: kube-prometheus-stack-chart
+              notes: ${source.dir}/config/NOTES.txt
+              sourceUrl: https://github.com/prometheus-community/helm-charts
+            cmd: prepare
+            registry: dhi.io
+        - name: relocate chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/charts/kube-prometheus-stack
+          with:
+            cmd: patch
+            patches:
+              from: ${source.dir}/config
+            registry: dhi.io
+        - name: helm login
+          uses: helm/login@v1
+          with:
+            registry: dhi.io
+        - name: pull dependencies
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/helm-charts/charts
+          privileged: true
+          with:
+            chart: kube-prometheus-stack
+            cmd: dependency update
+        - name: lint
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/helm-charts/charts
+          with:
+            chart: kube-prometheus-stack
+            cmd: lint .
+        - name: package
+          uses: helm/package@v1
+          work-dir: ${source.dir}/helm-charts/charts
+          with:
+            chart: kube-prometheus-stack
+      paths:
+        - type: directory
+          path: ${source.dir}/config
+          uid: 0
+          gid: 0
+          mode: "0644"
+          source: chart/kube-prometheus-stack/config

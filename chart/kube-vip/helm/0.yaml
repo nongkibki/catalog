@@ -1,0 +1,72 @@
+# syntax=dhi.io/build:2-helm3
+
+name: kube-vip Helm chart 0.x
+image: dhi.io/kube-vip-chart
+variant: helm
+tags:
+  - 0.9.8
+platforms:
+  - linux/amd64
+vars:
+  CHART_COMMIT_SHA: f9d5c5aa8f2a1b57dd5d8a9bf4784545be36ec6d
+  DHI_NAMESPACE: dhi
+  DHI_PREFIX: ""
+  DHI_REGISTRY: dhi.io
+  DHI_SKIP_CONTEXT_COPY: "true"
+  HELM_REFERENCE: dhi/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+  KUBE_VIP_REFERENCE: dhi/kube-vip:1.1.2-debian13@sha256:2d743e87e2ba176121dcee810d4325a387a4c69ca72e1203d70a5df9ec39a07c
+  SEMVER_MAJOR_MINOR_VERSION: "0.9"
+  SEMVER_MAJOR_VERSION: "0"
+  SEMVER_VERSION: 0.9.8
+  VERSION: 0.9.8
+contents:
+  builds:
+    - name: kube-vip
+      uses: dhi.io/helm:3.20.1-debian13-dev@sha256:7bee3e50c815757f78414dcd850621d0cca82d3660da2376f1111069073f3bd5
+      contents:
+        files:
+          - url: git+https://github.com/kube-vip/helm-charts.git#kube-vip-0.9.8
+            checksum: f9d5c5aa8f2a1b57dd5d8a9bf4784545be36ec6d
+            path: ${source.dir}/helm-charts
+            uid: 0
+            gid: 0
+      pipeline:
+        - name: prepare chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/charts/kube-vip
+          with:
+            chart:
+              appRef: kube-vip
+              description: Docker Hardened Images Helm chart for kube-vip
+              images:
+                - name: kube-vip
+                  ref: dhi/kube-vip:1.1.2-debian13@sha256:2d743e87e2ba176121dcee810d4325a387a4c69ca72e1203d70a5df9ec39a07c
+              name: kube-vip-chart
+              notes: ${source.dir}/config/NOTES.txt
+              sourceUrl: https://github.com/kube-vip/helm-charts
+            cmd: prepare
+        - name: relocate chart
+          uses: helm/rudder@v1
+          work-dir: ${source.dir}/helm-charts/charts/kube-vip
+          with:
+            cmd: patch
+            patches:
+              from: ${source.dir}/config
+            registry: dhi.io
+        - name: lint
+          uses: helm/cmd@v1
+          work-dir: ${source.dir}/helm-charts/charts
+          with:
+            chart: kube-vip
+            cmd: lint .
+        - name: package
+          uses: helm/package@v1
+          with:
+            chart: ${source.dir}/helm-charts/charts/kube-vip
+      paths:
+        - type: directory
+          path: ${source.dir}/config
+          uid: 0
+          gid: 0
+          mode: "0644"
+          source: chart/kube-vip/config

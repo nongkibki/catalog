@@ -1,10 +1,5 @@
 [
   {
-    "package": "@langchain/community",
-    "dev": false,
-    "version": "^0.3.58"
-  },
-  {
     "package": "body-parser",
     "dev": false,
     "version": "2.2.1"
@@ -38,5 +33,53 @@
   {
     "package": "sharp/tar-fs",
     "version": "^3.1.1"
+  },
+  {
+    "package": "qs",
+    "dev": false,
+    "version": "6.14.2"
+  },
+  {
+    "package": "@modelcontextprotocol/sdk",
+    "dev": false,
+    "version": "1.26.0"
+  },
+  {
+    "package": "undici",
+    "version": "^7.18.2"
+  },
+  {
+    "package": "@smithy/config-resolver",
+    "version": "^4.4.0"
+  },
+  {
+    "package": "fast-xml-parser",
+    "version": "5.3.8"
+  },
+  {
+    "package": "lodash",
+    "version": "4.17.23"
+  },
+  {
+    "package": "systeminformation",
+    "dev": false,
+    "version": "5.31.0"
+  },
+  {
+    "package": "markdown-it",
+    "version": "14.1.1"
+  },
+  {
+    "package": "langsmith",
+    "version": "0.4.6"
+  },
+  {
+    "package": "basic-ftp",
+    "version": "5.2.0"
+  },
+  {
+    "package": "bn.js",
+    "dev": false,
+    "version": "5.2.3"
   }
 ]

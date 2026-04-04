@@ -72,10 +72,10 @@ docker run -d -p 80:80 -p 443:443 -p 443:443/udp \
 
 ### Building custom Caddy with plugins
 
-Use the `-dev` variant with xcaddy to build Caddy with additional plugins:
+Use the golang dev image with xcaddy to build Caddy with additional plugins:
 
 ```dockerfile
-FROM dhi.io/caddy:<tag>-dev AS builder
+FROM dhi.io/golang:1.25-debian13-dev AS builder
 
 RUN CGO_ENABLED=0 go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
@@ -84,7 +84,7 @@ RUN xcaddy build \
     --with github.com/caddy-dns/cloudflare
 
 FROM dhi.io/caddy:<tag>
-COPY --from=builder /build/caddy /usr/bin/caddy
+COPY --from=builder /build/caddy /usr/local/bin/caddy
 ```
 
 ## Docker Official Images vs. Docker Hardened Images

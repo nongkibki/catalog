@@ -49,14 +49,15 @@ To customize evaluation even further you could mount the extra content to be eva
 STIG profile along with the output directories.
 
 ```console
-docker run --rm -it --entrypoint oscap dhi.io/openscap:<tag> \
+docker run --rm -it \
   -v $(pwd)/out:/out \
-  -v $(pwd)/extra-content:/extra-content
-  -v $(pwd)/stigs \
+  -v $(pwd)/extra-content:/extra-content \
+  -v $(pwd)/stigs:/stigs \
+  --entrypoint oscap dhi.io/openscap:<tag> \
   xccdf eval --profile <profile> \
   --results /out/results.xml \
   --report /out/results.html \
-  --cpe /stigs/<dictionary>
+  --cpe /stigs/<dictionary> \
   /stigs/<SCAP file>
 ```
 
@@ -67,7 +68,7 @@ supporting oval rules, like for example STIG.
 
 #### Obtaining the DHI GPOS STIG Profile
 
-The DHI GPOS STIG Profile is can be obtained from the
+The DHI GPOS STIG Profile can be obtained from the
 [OpenSCAP DHI](https://github.com/docker-hardened-images/catalog/blob/main/image/openscap/config/ssg-dhi-gpos-ds.xml)
 image at GitHub.
 
@@ -115,8 +116,8 @@ against the `Docker Hardened Image - Alpine 3.22/Debian 12/13 GPOS STIG Profile`
 
 #### Running OpenSCAP on a DHI running container
 
-You can do the same technique on any running container. Below we use start the postgres FIPS image and mount busybox on
-top to run a sleep command immediately after. This allows us to have a latent container that we can scan:
+You can do the same technique on any running container. Below we start the postgres FIPS image and mount busybox on top
+to run a sleep command immediately after. This allows us to have a latent container that we can scan:
 
 ```console
 docker pull busybox:uclibc
